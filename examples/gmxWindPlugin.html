@@ -77,9 +77,11 @@
             ddt2 = new Date(ddt1.getTime() + 20*oneDay);
 
 		var items = {};
-        L.gmx.loadLayer('UIRCQ', '7CB878E2BE274837B291E592B2530C39', {
+        L.gmx.loadLayer('534633165F6B41C482D73A6DA78F1B7D', 'D0BA71F8BEB44B7D86DF12492D0DCCBB', {
         }).then(function(wind) {
             //wind.addTo(map);
+            wind._gmx.styleManager.initStyles().then(function () {
+
             var observer = wind.addObserver({
                 //dateInterval: [ddt1, ddt2],
                 filters: ['styleFilter'],
@@ -154,6 +156,7 @@
                 }
 			});
 */
+            });
         })
 	</script>
 </body>

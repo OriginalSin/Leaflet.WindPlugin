@@ -790,7 +790,7 @@ L.WindPlugin = L.Class.extend({
         L.setOptions(this, options);
         this._observers = {};
         this._styleManagers = {};
-        this._labels = {};
+        this._data = {};
         var _this = this;
 
         var worker = new Worker('../src/worker.js');
@@ -896,9 +896,11 @@ var mapAnimator = new Animator(isAnimating);
 */
             }
             out.items = items;
+            out.mInPixel = 256 / gmxAPIutils.tileSizes[_this._map._zoom];
+
 this.sendTime = new Date().getTime();
             this.worker.postMessage(out);
-            _this._data = labels;
+            _this._data = out;
             _this.redraw();
 console.log('add', data.length);
         };
@@ -999,8 +1001,36 @@ console.log('add', data.length);
         }*/
     },
 
+    _drawItems: function (pt) {
+        var w = pt.width * 4,
+            h = pt.height,
+            style = pt.style,
+            sw = style.width * 4,
+            sh = style.height,
+            iconArr = style.icon.data;
+
+var buf = new ArrayBuffer(iconArr.length);
+var buf8 = new Uint8ClampedArray(buf);
+buf8.set(iconArr);
+        var buffer = new ArrayBuffer(w * h);
+        //var buffer = new ArrayBuffer(8);
+        var arr = new Uint8ClampedArray(buffer);
+        for (var i = 0; i < sh; i++) {
+            var sub = buf8.subarray(i * sw, sw);
+            //var p = Array.prototype.slice.call(sub);
+            arr.set(sub, i * w + w * 100);
+        }
+        for (var j = 0; j < h; j++) {
+            for (var i = 0; i < w * 4; i += 4) {
+                arr[i + j * w * 4 + 3] = 255;
+            }
+        }
+        var t1 = 1;
+        return arr;
+    },
+
     _redraw: function () {
-        var out = [],
+        var arr = this._drawItems(this._data),
             _map = this._map,
             mapSize = _map.getSize(),
             _canvas = this._canvas,
@@ -1015,16 +1045,44 @@ console.log('add', data.length);
             start = w2 * Math.floor(_map.getPixelBounds().min.x / w2),
             ctx = _canvas.getContext('2d');
 
+        //ctx.putImageData(arr, 0, 0);
+
         var pixelSet = ctx.createImageData(_canvas.width, _canvas.height);
-        
-        var tt = 1;
+pixelSet.data.set(arr);
+        ctx.putImageData(pixelSet, 0, 0);
 /*
+return;
+        //var buffer = new ArrayBuffer(mapSize.x * mapSize.y * 4);
+        // var buffer = new ArrayBuffer(8);
+        // var tt = new Uint8ClampedArray(buffer);
+        var t1 = 1;
+        
+var buf = new ArrayBuffer(pixelSet.data.length);
+var buf8 = new Uint8ClampedArray(buf);
+var data = new Uint32Array(buf);
+
+for (var y = 0; y < _canvas.height; ++y) {
+    for (var x = 0; x < _canvas.width; ++x) {
+        var value = x * y & 0xff;
+
+        data[y * _canvas.width + x] =
+            (255   << 24) |    // alpha
+            (value << 16) |    // blue
+            (value <<  8) |    // green
+             value;            // red
+    }
+}
+
+pixelSet.data.set(buf8);
+
+ctx.putImageData(pixelSet, 0, 0);
+
 var pixelSetLen = 4*50*50,
 	    i;
 for(i=3;i<pixelSetLen;i+=4)
 	{
-	    pixelSet.data[i] = 255; // äàëàåì åãî íå ïðîðà÷íûì
-	    if((i-3)%20 == 0) pixelSet.data[i-3] = 255; // êàæäûé 5-é ïèêñåëü äåëàåì êðàñíûì
+	    pixelSet.data[i] = 255; // Ð´Ð°Ð»Ð°ÐµÐ¼ ÐµÐ³Ð¾ Ð½Ðµ Ð¿Ñ€Ð¾Ñ€Ð°Ñ‡Ð½Ñ‹Ð¼
+	    if((i-3)%20 == 0) pixelSet.data[i-3] = 255; // ÐºÐ°Ð¶Ð´Ñ‹Ð¹ 5-Ð¹ Ð¿Ð¸ÐºÑÐµÐ»ÑŒ Ð´ÐµÐ»Ð°ÐµÐ¼ ÐºÑ€Ð°ÑÐ½Ñ‹Ð¼
 	}
 	ctx.putImageData(pixelSet, 20,20);
 
