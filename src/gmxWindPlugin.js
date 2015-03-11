@@ -843,6 +843,8 @@ var mapAnimator = new Animator(isAnimating);
                     // if ('iconColor' in currentStyle) {
                         // style.iconColor = currentStyle.iconColor;
                     // }
+                    
+                    style.image = style.icon;
                     style.icon = this._getImageData(style);
                     out.style = style;
                 }
@@ -900,7 +902,7 @@ var mapAnimator = new Animator(isAnimating);
             out.mInPixel = 256 / gmxAPIutils.tileSizes[_this._map._zoom];
 
 this.sendTime = new Date().getTime();
-            this.worker.postMessage(out);
+//            this.worker.postMessage(out);
             _this._data = out;
             _this.redraw();
 console.log('add', data.length);
@@ -1045,6 +1047,17 @@ console.log('add', data.length);
         var pixelSet = ctx.createImageData(_canvas.width, _canvas.height);
 pixelSet.data.set(arr);
         ctx.putImageData(pixelSet, 0, 0);
+        
+var items = this._data.items;
+var image = this._data.style.image;
+var itemLength = this._data.length;
+
+var startTime = new Date().getTime();
+    for (var i = 0, len = items.length; i < len; i += itemLength) {
+        ctx.drawImage(image, 100 + Math.random()*550, 400 + Math.random()*50);
+    }
+console.log('ctx.drawImage:', new Date().getTime() - startTime, ' count:', items.length);
+
 /*
 return;
         //var buffer = new ArrayBuffer(mapSize.x * mapSize.y * 4);
@@ -1199,11 +1212,14 @@ function memcpy (src, srcOffset, dst, dstOffset, length) {
 function drawIcon(x, y, dst, dstWidth, src, srcWidth, srcHeight) {
     var shift = 4 * x + dstWidth * y;
     for (var i = 0; i < srcHeight; i++) {
-        memcpy(src, i * srcWidth, dst, i * dstWidth + shift, srcWidth);
+        var srcOffset = i * srcWidth;
+        //memcpy(src, i * srcWidth, dst, i * dstWidth + shift, srcWidth);
+    dst.set(src.subarray(srcOffset, srcOffset + srcWidth), i * dstWidth + shift);
     }
 }
 
 function drawItems(pt) {
+    //"use asm";
     var w = pt.width * 4,
         h = pt.height,
         itemLength = pt.length,
@@ -1218,10 +1234,11 @@ function drawItems(pt) {
     var buffer = new ArrayBuffer(w * h),
         arr = new Uint8Array(buffer);
 
-    // for (var i = 0, len = items.length; i < len; i += itemLength) {
-        //drawIcon(arr, w, iconArr, sw, sh);
-    // }
-    drawIcon(100, 100, arr, w, iconArr, sw, sh);
+var startTime = new Date().getTime();
+    for (var i = 0, len = items.length; i < len; i += itemLength) {
+        drawIcon(10 + Math.random()*20, 100 + Math.random()*50, arr, w, iconArr, sw, sh);
+    }
+console.log('Typed Array time:', new Date().getTime() - startTime, ' count:', items.length);
 /*
     for (var i = 0; i < sh; i++) {
 // copyBytes(arr, buf8, i * w + w * 100, i * sw, sw);
