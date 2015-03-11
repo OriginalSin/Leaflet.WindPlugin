@@ -811,6 +811,7 @@ _this.allTime = (new Date().getTime() - _this.sendTime);
             var labels = {};
             var style,
                 out = {
+                    length: 5,
                     width: this._canvas.width,
                     height: this._canvas.height
                 };
@@ -1001,36 +1002,20 @@ console.log('add', data.length);
         }*/
     },
 
-    _drawItems: function (pt) {
-        var w = pt.width * 4,
-            h = pt.height,
-            style = pt.style,
-            sw = style.width * 4,
-            sh = style.height,
-            iconArr = style.icon.data;
-
-var buf = new ArrayBuffer(iconArr.length);
-var buf8 = new Uint8ClampedArray(buf);
-buf8.set(iconArr);
-        var buffer = new ArrayBuffer(w * h);
-        //var buffer = new ArrayBuffer(8);
-        var arr = new Uint8ClampedArray(buffer);
-        for (var i = 0; i < sh; i++) {
-            var sub = buf8.subarray(i * sw, sw);
-            //var p = Array.prototype.slice.call(sub);
-            arr.set(sub, i * w + w * 100);
-        }
-        for (var j = 0; j < h; j++) {
-            for (var i = 0; i < w * 4; i += 4) {
-                arr[i + j * w * 4 + 3] = 255;
-            }
-        }
-        var t1 = 1;
-        return arr;
-    },
-
     _redraw: function () {
-        var arr = this._drawItems(this._data),
+        var _map = this._map,
+            screenBounds = _map.getBounds(),
+            southWest = screenBounds.getSouthWest(),
+            northEast = screenBounds.getNorthEast(),
+            m1 = L.Projection.Mercator.project(southWest),
+            m2 = L.Projection.Mercator.project(northEast);
+
+        this.mInPixel = gmxAPIutils.getPixelScale(_map._zoom);
+        this._ctxShift = [m1.x * this.mInPixel, m2.y * this.mInPixel];
+        this._data.mInPixel = this.mInPixel;
+        this._data.ctxShift = this._ctxShift;
+    
+        var arr = drawItems(this._data),
             _map = this._map,
             mapSize = _map.getSize(),
             _canvas = this._canvas,
@@ -1041,9 +1026,19 @@ buf8.set(iconArr);
         if (_canvas.height !== mapSize.y) {_canvas.height = mapSize.y;}
         L.DomUtil.setPosition(_canvas, topLeft);
 
-        var w2 = 2 * this.mInPixel * gmxAPIutils.worldWidthMerc,
-            start = w2 * Math.floor(_map.getPixelBounds().min.x / w2),
-            ctx = _canvas.getContext('2d');
+        
+// var pt = this._data;
+// var canvas1 = L.DomUtil.create('canvas', '');
+// canvas1.width  = pt.style.width; canvas1.height = pt.style.height;
+// var ctx1 = canvas1.getContext('2d');
+// var pixelSet1 = ctx1.createImageData(canvas1.width, canvas1.height);
+// pixelSet1.data.set(arr);
+// ctx1.putImageData(pixelSet1, 0, 0);
+// map.getPanes()[this.options.pane].appendChild(canvas1);
+
+        // var w2 = 2 * this.mInPixel * gmxAPIutils.worldWidthMerc,
+            // start = w2 * Math.floor(_map.getPixelBounds().min.x / w2),
+        var ctx = _canvas.getContext('2d');
 
         //ctx.putImageData(arr, 0, 0);
 
@@ -1177,4 +1172,73 @@ for(i=3;i<pixelSetLen;i+=4)
 L.windPlugin = function (map, options) {
     return new L.WindPlugin(map, options);
 };
+
+// function memcpy (src, srcOffset, dst, dstOffset, length) {
+    // src = src.subarray || src.slice ? src : src.buffer;
+    // dst = dst.subarray || dst.slice ? dst : dst.buffer;
+     
+    // src = srcOffset ? src.subarray ?
+    // src.subarray(srcOffset, length && srcOffset + length) :
+    // src.slice(srcOffset, length && srcOffset + length) : src;
+     
+    // if (dst.set) {
+        // dst.set(src, dstOffset);
+    // } else {
+        // for (var i = 0, len = src.length; i < len; i++) {
+            // dst[i + dstOffset] = src[i];
+        // }
+    // }
+    // return dst;
+// } 
+
+function memcpy (src, srcOffset, dst, dstOffset, length) {
+    dst.set(src.subarray(srcOffset, srcOffset + length), dstOffset);
+    return dst;
+} 
+
+function drawIcon(x, y, dst, dstWidth, src, srcWidth, srcHeight) {
+    var shift = 4 * x + dstWidth * y;
+    for (var i = 0; i < srcHeight; i++) {
+        memcpy(src, i * srcWidth, dst, i * dstWidth + shift, srcWidth);
+    }
+}
+
+function drawItems(pt) {
+    var w = pt.width * 4,
+        h = pt.height,
+        itemLength = pt.length,
+        items = pt.items,
+        mInPixel = pt.mInPixel,
+        ctxShift = pt.ctxShift,
+        style = pt.style,
+        sw = style.width * 4,
+        sh = style.height,
+        iconArr = style.icon.data;
+
+    var buffer = new ArrayBuffer(w * h),
+        arr = new Uint8Array(buffer);
+
+    // for (var i = 0, len = items.length; i < len; i += itemLength) {
+        //drawIcon(arr, w, iconArr, sw, sh);
+    // }
+    drawIcon(100, 100, arr, w, iconArr, sw, sh);
+/*
+    for (var i = 0; i < sh; i++) {
+// copyBytes(arr, buf8, i * w + w * 100, i * sw, sw);
+// var view = new Uint8Array(aTarget, aTargetOffset);
+// view.set(new Uint8Array(aSource, aSourceOffset, aLength));
+        memcpy(iconArr, i * sw, arr, i * w + w * 100, sw);
+        // for (var j = 0; j < sw; j++) {
+            // arr[i * w + j + w * 100] = buf8[i * sw + j];
+        // }
+    
+        // var sub = buf8.subarray(i * sw, sw);
+        //var p = Array.prototype.slice.call(sub);
+        //arr.set(sub, i * w + w * 100);
+        // arr.set(sub, i * w + w * 100, sw);
+    }
+*/
+    return arr;
+}
+
 })();
